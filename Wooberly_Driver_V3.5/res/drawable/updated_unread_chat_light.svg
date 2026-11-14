@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="24" viewBox="0 0 22 24">
+  <g id="Group_43156" data-name="Group 43156" transform="translate(-44 -736)">
+    <g id="chat" transform="translate(44 738)">
+      <g id="Group_12403" data-name="Group 12403" transform="translate(4.125 4.125)">
+        <g id="Group_12402" data-name="Group 12402">
+          <path id="Path_22555" data-name="Path 22555" d="M104.938,96h-8.25a.688.688,0,0,0,0,1.375h8.25a.688.688,0,0,0,0-1.375Z" transform="translate(-96 -96)" fill="#131314"/>
+        </g>
+      </g>
+      <g id="Group_12405" data-name="Group 12405" transform="translate(4.125 6.875)">
+        <g id="Group_12404" data-name="Group 12404">
+          <path id="Path_22556" data-name="Path 22556" d="M102.188,160h-5.5a.688.688,0,0,0,0,1.375h5.5a.688.688,0,0,0,0-1.375Z" transform="translate(-96 -160)" fill="#131314"/>
+        </g>
+      </g>
+      <g id="Group_12407" data-name="Group 12407">
+        <g id="Group_12406" data-name="Group 12406">
+          <path id="Path_22557" data-name="Path 22557" d="M15.125,0H2.75A2.753,2.753,0,0,0,0,2.75V16.5a.687.687,0,0,0,.4.623.7.7,0,0,0,.292.065.687.687,0,0,0,.44-.16L5.061,13.75H15.125A2.753,2.753,0,0,0,17.875,11V2.75A2.753,2.753,0,0,0,15.125,0ZM16.5,11a1.376,1.376,0,0,1-1.375,1.375H4.813a.687.687,0,0,0-.44.16l-3,2.5V2.75A1.376,1.376,0,0,1,2.75,1.375H15.125A1.376,1.376,0,0,1,16.5,2.75Z" fill="#131314"/>
+        </g>
+      </g>
+      <g id="Group_12409" data-name="Group 12409" transform="translate(5.5 5.5)">
+        <g id="Group_12408" data-name="Group 12408">
+          <path id="Path_22558" data-name="Path 22558" d="M141.75,128a.688.688,0,1,0,0,1.375,1.376,1.376,0,0,1,1.375,1.375v11.631l-2.321-1.856a.693.693,0,0,0-.429-.15H130.75A1.376,1.376,0,0,1,129.375,139v-.688a.688.688,0,0,0-1.375,0V139a2.753,2.753,0,0,0,2.75,2.75h9.383l3.249,2.6a.688.688,0,0,0,1.118-.538V130.75A2.753,2.753,0,0,0,141.75,128Z" transform="translate(-128 -128)" fill="#131314"/>
+        </g>
+      </g>
+    </g>
+    <circle id="Ellipse_17" data-name="Ellipse 17" cx="3" cy="3" r="3" transform="translate(58 736)" fill="red"/>
+  </g>
+</svg>

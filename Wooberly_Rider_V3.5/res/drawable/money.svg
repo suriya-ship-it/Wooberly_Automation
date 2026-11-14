@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18.995" height="12.988" viewBox="0 0 18.995 12.988">
+  <g id="cash" transform="translate(0 -80.134)">
+    <path id="Path_22566" data-name="Path 22566" d="M17.289,92.988H1.707A1.7,1.7,0,0,1,0,91.291V81.7A1.7,1.7,0,0,1,1.707,80H17.289A1.7,1.7,0,0,1,19,81.7v9.593A1.7,1.7,0,0,1,17.289,92.988ZM1.707,81.181a.519.519,0,0,0-.519.517v9.593a.519.519,0,0,0,.519.517H17.289a.519.519,0,0,0,.519-.517V81.7a.519.519,0,0,0-.519-.517Z" transform="translate(0 0.134)" fill="#131314"/>
+    <g id="Ellipse_70" data-name="Ellipse 70" transform="translate(6.498 83.628)" fill="#fff" stroke="#131314" stroke-width="1">
+      <circle cx="3" cy="3" r="3" stroke="none"/>
+      <circle cx="3" cy="3" r="2.5" fill="none"/>
+    </g>
+    <path id="Path_24690" data-name="Path 24690" d="M2.006,83.588V81.7H4.09" transform="translate(0.131 0.639)" fill="none" stroke="#131314" stroke-width="1"/>
+    <path id="Path_24691" data-name="Path 24691" d="M4.09,83.588V81.7H2.006" transform="translate(12.652 0.639)" fill="none" stroke="#131314" stroke-width="1"/>
+    <path id="Path_24692" data-name="Path 24692" d="M4.09,81.7v1.889H2.006" transform="translate(12.652 7.319)" fill="none" stroke="#131314" stroke-width="1"/>
+    <path id="Path_24693" data-name="Path 24693" d="M2.006,81.7v1.889H4.09" transform="translate(0.131 7.319)" fill="none" stroke="#131314" stroke-width="1"/>
+  </g>
+</svg>

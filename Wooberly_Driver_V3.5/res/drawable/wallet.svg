@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18.083" height="12.988" viewBox="0 0 18.083 12.988">
+  <g id="cash" transform="translate(0 -80.134)">
+    <path id="Path_22566" data-name="Path 22566" d="M16.459,92.988H1.625A1.664,1.664,0,0,1,0,91.291V81.7A1.664,1.664,0,0,1,1.625,80H16.459a1.664,1.664,0,0,1,1.625,1.7v9.593A1.664,1.664,0,0,1,16.459,92.988ZM1.625,81.181a.506.506,0,0,0-.494.517v9.593a.506.506,0,0,0,.494.517H16.459a.506.506,0,0,0,.494-.517V81.7a.506.506,0,0,0-.494-.517Z" transform="translate(0 0.134)" fill="#131314"/>
+    <g id="Rectangle_2778" data-name="Rectangle 2778" transform="translate(9.592 83.384)" fill="none" stroke="#131314" stroke-width="1">
+      <path d="M3,0H8A0,0,0,0,1,8,0V6A0,0,0,0,1,8,6H3A3,3,0,0,1,0,3V3A3,3,0,0,1,3,0Z" stroke="none"/>
+      <path d="M3,.5H7a.5.5,0,0,1,.5.5V5a.5.5,0,0,1-.5.5H3A2.5,2.5,0,0,1,.5,3V3A2.5,2.5,0,0,1,3,.5Z" fill="none"/>
+    </g>
+    <g id="Rectangle_2779" data-name="Rectangle 2779" transform="translate(11.592 85.384)" fill="none" stroke="#131314" stroke-width="1">
+      <rect width="4" height="2" rx="1" stroke="none"/>
+      <rect x="0.5" y="0.5" width="3" height="1" rx="0.5" fill="none"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+#include "Flutter/Generated.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(PACKAGE_NAME)
+APP_NAME = Wooberly Driver
+GRAPHQL_DOMAIN = https:/$()/demo.wooberly.com/api/graphql
+UPLOAD_URL = https:/$()/demo.wooberly.com/api
+SOCKET_URL = https:/$()/demo.wooberly.com
+SECURE_API_KEY = x6Qbs<0]`Ed{Y{}WoA{oBro**]2V
+APP_VERSION = 3.5
+BUILD_VERSION = 1
+PACKAGE_NAME = com.radicalstart.wooberlydriver
+IPHONEOS_DEPLOYMENT_TARGET = 16.0

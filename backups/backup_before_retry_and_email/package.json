@@ -1,0 +1,45 @@
+{
+  "name": "appium-automation",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "sync-theme": "node scripts/sync_theme.js",
+    "test": "tsx tests/e2e/wooberly_combined_driver_rider_flow.ts",
+    "test:e2e": "tsx tests/e2e/wooberly_combined_driver_rider_flow.ts",
+    "test:signup": "tsx tests/e2e/wooberly_e2e_flow.ts",
+    "test:login": "tsx tests/e2e/wooberly_login_e2e_flow.ts",
+    "test:driver-online": "tsx tests/e2e/wooberly_driver_online_flow.ts",
+    "test:during-booking": "tsx tests/e2e/wooberly_trip_flow.ts",
+    "test:trip": "tsx tests/e2e/wooberly_trip_flow.ts",
+    "test:full": "tsx tests/e2e/wooberly_full_e2e_flow.ts",
+    "test:step #1": "tsx tests/e2e/wooberly_step1_flow.ts",
+    "test:step1": "tsx tests/e2e/wooberly_step1_flow.ts",
+    "test:step #2": "tsx tests/e2e/wooberly_step2_flow.ts",
+    "test:step2": "tsx tests/e2e/wooberly_step2_flow.ts",
+    "test:step-2": "tsx tests/e2e/wooberly_step2_flow.ts",
+    "test:store-install": "tsx tests/e2e/wooberly_store_install_flow.ts",
+    "test:playstore": "tsx tests/e2e/wooberly_store_install_flow.ts",
+    "test:ios:step2": "tsx tests/e2e/ios/wooberly_ios_step2_flow.ts",
+    "test:ios:store": "tsx tests/e2e/ios/wooberly_ios_store_install_flow.ts",
+    "test:ios": "tsx tests/e2e/ios/wooberly_ios_step2_flow.ts",
+    "bridge": "tsx bridge/server.ts",
+    "dev": "tsx bridge/server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/nodemailer": "^8.0.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "webdriverio": "^9.32.0"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "description": "",
+  "dependencies": {
+    "nodemailer": "^10.1.7"
+  }
+}

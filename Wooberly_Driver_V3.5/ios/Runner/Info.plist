@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>API_Security_Key</key>
+    <string>x6Qbs&lt;0]`Ed{Y{}WoA{oBro**]2V</string>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <string>$(PACKAGE_NAME)</string>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>$(APP_NAME)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(APP_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(APP_VERSION)</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>$(BUILD_VERSION)</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>whatsapp</string>
+    </array>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+        <key>NSAllowsArbitraryLoadsInWebContent</key>
+        <true/>
+    </dict>
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Play using while you are hiking</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>$(PRODUCT_NAME) bluetooth use.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>$(PRODUCT_NAME) user your calendar.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>The app needs permission to your camera to take photos in order to upload a profile picture or your documents to get verified by the platform owner.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>We use your precise location to allocate trips for you and manage your trips. Location data is only collected when you are logged in for a session or otherwise active within the app.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>We use your precise location to allocate trips for you and manage your trips. Location data is only collected when you are logged in for a session or otherwise active within the app.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>We use your precise location to allocate trips for you and manage your trips. Location data is only collected when you are logged in for a session or otherwise active within the app.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>$(PRODUCT_NAME) motion use.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The app needs permission to your photo library to change the profile settings and documents informations.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app requires microphone access to enable audio capture for voice features, including calls.</string>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+
+    <!-- ============================================================
+         UIScene lifecycle manifest — required for Flutter 3.41+
+         and mandatory for the iOS version after iOS 26 (Apple policy).
+         UISceneDelegateClassName points to our custom SceneDelegate
+         which subclasses FlutterSceneDelegate.
+         ============================================================ -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneClassName</key>
+                    <string>UIWindowScene</string>
+                    <key>UISceneDelegateClassName</key>
+                    <!-- Use $(PRODUCT_MODULE_NAME).SceneDelegate because we created
+                         a custom SceneDelegate subclass of FlutterSceneDelegate.
+                         Change to "FlutterSceneDelegate" if you remove SceneDelegate.swift. -->
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                    <key>UISceneConfigurationName</key>
+                    <string>flutter</string>
+                    <key>UISceneStoryboardFile</key>
+                    <string>Main</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+        <string>fetch</string>
+        <string>location</string>
+        <string>processing</string>
+        <string>remote-notification</string>
+    </array>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UIStatusBarStyle</key>
+    <string>UIStatusBarStyleLightContent</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <string>NSLocationWhenInUseUsageDescription</string>
+    <key>URL</key>
+    <string>$(GRAPHQL_DOMAIN)</string>
+    <key>io.flutter.embedded_views_preview</key>
+    <true/>
+</dict>
+</plist>

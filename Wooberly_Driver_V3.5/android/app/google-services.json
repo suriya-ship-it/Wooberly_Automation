@@ -1,0 +1,77 @@
+{
+  "project_info": {
+    "project_number": "1020604065689",
+    "firebase_url": "https://wooberly-driver.firebaseio.com",
+    "project_id": "wooberly-driver",
+    "storage_bucket": "wooberly-driver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020604065689:android:230245d750a5f007025508",
+        "android_client_info": {
+          "package_name": "com.radicalstart.wooberly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5TuxTgHQkUywgDiIra-HXNs06ZCVm6D8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020604065689:android:b3e45f57bb5d08fb025508",
+        "android_client_info": {
+          "package_name": "com.radicalstart.wooberlydriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5TuxTgHQkUywgDiIra-HXNs06ZCVm6D8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020604065689:android:e838c83af3a5372f025508",
+        "android_client_info": {
+          "package_name": "com.uberclone.uber_clone"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1020604065689-dujvh5mhih53dj7mmo24j2g6153722q5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.uberclone.uber_clone",
+            "certificate_hash": "5a229621e8188e1c66620ef50c9ad7131fdbafb6"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5TuxTgHQkUywgDiIra-HXNs06ZCVm6D8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

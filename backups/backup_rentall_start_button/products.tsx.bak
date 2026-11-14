@@ -1,0 +1,722 @@
+import { createFileRoute, useRouteContext } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Play, Square, Plus, Trash2, Video, Download, RefreshCw, Clock, CheckCircle2, XCircle, AlertCircle, Terminal } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge } from "./dashboard";
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
+
+const BRIDGE_URL = "http://localhost:4000";
+
+export const Route = createFileRoute("/_authenticated/products")({
+  head: () => ({
+    meta: [
+      { title: "Products — Smoke//Ops" },
+      { name: "description", content: "List products, add new ones, start Appium tests, and view video results." },
+      { property: "og:title", content: "Products — Smoke//Ops" },
+      { property: "og:description", content: "Manage products and smoke test runs." },
+    ],
+  }),
+  component: ProductsPage,
+});
+
+type Run = {
+  id: string;
+  product_id: string;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+  started_by: string;
+  notes?: string | null;
+};
+
+type ProductItem = {
+  id: string;
+  name: string;
+  version: string | null;
+  environment: string | null;
+  owner: string | null;
+  created_at?: string;
+  lastRun?: Run | null;
+};
+
+interface BridgeStatus {
+  isRunning: boolean;
+  currentRun: {
+    id: string;
+    productName: string;
+    status: string;
+    startedAt: string;
+    durationSeconds: number;
+    elapsedSeconds: number;
+  } | null;
+  lastRun: {
+    id: string;
+    productName: string;
+    status: string;
+    startedAt: string;
+    endedAt: string | null;
+    durationSeconds: number;
+    videoFilename: string | null;
+    videoUrl: string | null;
+    errorReason: string | null;
+    exitCode: number | null;
+    logs?: string[];
+  } | null;
+  logsTail: string[];
+}
+
+interface BridgeRunRecord {
+  id: string;
+  productName: string;
+  status: "running" | "passed" | "failed" | "stopped";
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number;
+  videoFilename: string | null;
+  videoUrl: string | null;
+  errorReason: string | null;
+  exitCode: number | null;
+  logs?: string[];
+}
+
+function ProductsPage() {
+  const qc = useQueryClient();
+  const { user } = useRouteContext({ from: "/_authenticated" });
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+
+  // Poll Local Bridge Automation Server
+  const { data: bridgeStatus } = useQuery<BridgeStatus | null>({
+    queryKey: ["bridgeStatus"],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${BRIDGE_URL}/api/tests/status`);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    },
+    refetchInterval: (query) => (query.state.data?.isRunning ? 2000 : 5000),
+  });
+
+  // Query Supabase Products and Runs
+  const { data, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const [p, r] = await Promise.all([
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
+        supabase.from("test_runs").select("id, product_id, status, started_at, ended_at, started_by, notes").order("started_at", { ascending: false }),
+      ]);
+      if (p.error) throw p.error;
+      if (r.error) throw r.error;
+      const latest = new Map<string, Run>();
+      for (const run of (r.data as Run[])) if (!latest.has(run.product_id)) latest.set(run.product_id, run);
+
+      let list = (p.data || []).map((prod) => ({ ...prod, lastRun: latest.get(prod.id) }));
+
+      // Ensure default Wooberly Android & iOS products exist in the list
+      const hasWooberlyAndroid = list.some(
+        (prod) =>
+          prod.name.toLowerCase().includes("wooberly") &&
+          (prod.environment?.toLowerCase().includes("android") || prod.name.toLowerCase().includes("android"))
+      );
+      const hasWooberlyIOS = list.some(
+        (prod) =>
+          prod.name.toLowerCase().includes("wooberly") &&
+          (prod.environment?.toLowerCase().includes("ios") ||
+            prod.name.toLowerCase().includes("ios") ||
+            prod.environment?.toLowerCase().includes("iphone"))
+      );
+
+      const defaults: ProductItem[] = [];
+      if (!hasWooberlyAndroid) {
+        defaults.push({
+          id: "wooberly-android",
+          name: "Wooberly (Android)",
+          version: "v3.5",
+          environment: "Android Real Device",
+          owner: "QA Team",
+          created_at: new Date().toISOString(),
+          lastRun: null,
+        });
+      }
+      if (!hasWooberlyIOS) {
+        defaults.push({
+          id: "wooberly-ios",
+          name: "Wooberly (iOS)",
+          version: "v3.5",
+          environment: "iPhone 15 Real Device",
+          owner: "QA Team",
+          created_at: new Date().toISOString(),
+          lastRun: null,
+        });
+      }
+
+      list = [...defaults, ...list.filter((prod) => prod.id !== "wooberly-appium")];
+
+      return list;
+    },
+  });
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["products"] });
+    qc.invalidateQueries({ queryKey: ["bridgeStatus"] });
+  };
+
+  // Start automation
+  const handleStart = async (product: ProductItem) => {
+    try {
+      const isIOS =
+        product.name.toLowerCase().includes("ios") ||
+        product.environment?.toLowerCase().includes("ios") ||
+        product.environment?.toLowerCase().includes("iphone");
+      const isAndroid =
+        product.name.toLowerCase().includes("android") ||
+        product.environment?.toLowerCase().includes("android") ||
+        (!isIOS && product.name.toLowerCase().includes("wooberly"));
+
+      if (isIOS || isAndroid) {
+        const platform = isIOS ? "ios" : "android";
+        const res = await fetch(`${BRIDGE_URL}/api/tests/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platform, productName: product.name }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to communicate with local Appium bridge on port 4000.");
+        }
+        toast.success(`Started ${product.name} smoke test on connected ${isIOS ? "iPhone 15" : "Android"} device!`);
+      }
+
+      if (product.id && !product.id.startsWith("wooberly-")) {
+        await supabase.from("test_runs").insert({ product_id: product.id });
+      }
+
+      refresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to start test");
+    }
+  };
+
+  // Stop automation
+  const handleStop = async (product: ProductItem) => {
+    try {
+      if (product.name.toLowerCase().includes("wooberly")) {
+        const res = await fetch(`${BRIDGE_URL}/api/tests/stop`, { method: "POST" });
+        if (!res.ok) throw new Error("Failed to stop bridge test process");
+        toast.info(`Stopped ${product.name} automation run.`);
+      }
+
+      if (product.lastRun && product.lastRun.id) {
+        await supabase
+          .from("test_runs")
+          .update({ status: "failed", notes: "Stopped by user", ended_at: new Date().toISOString() })
+          .eq("id", product.lastRun.id);
+      }
+
+      refresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to stop test");
+    }
+  };
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (id.startsWith("wooberly-")) return;
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  useWebMCP({
+    name: "list_products",
+    description: "List the products shown in the table with their latest smoke test status.",
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    execute: () =>
+      runWebMCPTool("list_products", () => {
+        if (isLoading || !data) return "Products are still loading.";
+        if (!data.length) return "No products shown.";
+        return data.map((p) => `${p.id}: ${p.name} — ${p.lastRun?.status ?? "never run"}`).join("\n");
+      }),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-widest text-primary">Inventory & Automation</p>
+          <h1 className="text-3xl font-bold">Products</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {bridgeStatus ? (
+            <span className="flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 font-mono text-xs text-success">
+              <span className="h-2 w-2 rounded-full bg-success" />
+              Appium Bridge Online (Port 4000)
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning/10 px-3 py-1 font-mono text-xs text-warning" title="Run 'npm run bridge' in appium-automation to connect your physical phone">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Appium Bridge Offline
+            </span>
+          )}
+          <AddProductDialog onAdded={refresh} />
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-card shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead>Version</TableHead>
+              <TableHead>Environment</TableHead>
+              <TableHead>Owner</TableHead>
+              <TableHead>Last Run</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading && (
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+            )}
+            {!isLoading && !data?.length && (
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No products yet.</TableCell></TableRow>
+            )}
+            {data?.map((p) => {
+              const isIOS =
+                p.name.toLowerCase().includes("ios") ||
+                p.environment?.toLowerCase().includes("ios") ||
+                p.environment?.toLowerCase().includes("iphone");
+              const isWooberly = p.name.toLowerCase().includes("wooberly");
+
+              // Determine if this specific product is currently running on the bridge
+              const matchesPlatform =
+                bridgeStatus?.currentRun?.productName === p.name ||
+                (isIOS &&
+                  (bridgeStatus?.currentRun?.productName?.toLowerCase().includes("ios") ||
+                    (bridgeStatus?.currentRun as any)?.platform === "ios")) ||
+                (!isIOS &&
+                  isWooberly &&
+                  (!bridgeStatus?.currentRun?.productName?.toLowerCase().includes("ios") &&
+                    (bridgeStatus?.currentRun as any)?.platform !== "ios"));
+
+              const isBridgeRunning = isWooberly && !!bridgeStatus?.isRunning && matchesPlatform;
+              const isRunning = isBridgeRunning || p.lastRun?.status === "running";
+
+              let effectiveStatus = p.lastRun?.status ?? "never run";
+              let effectiveTime = p.lastRun ? new Date(p.lastRun.started_at).toLocaleString() : "Never";
+
+              const matchesLastPlatform =
+                bridgeStatus?.lastRun?.productName === p.name ||
+                (isIOS &&
+                  (bridgeStatus?.lastRun?.productName?.toLowerCase().includes("ios") ||
+                    (bridgeStatus?.lastRun as any)?.platform === "ios")) ||
+                (!isIOS &&
+                  isWooberly &&
+                  (!bridgeStatus?.lastRun?.productName?.toLowerCase().includes("ios") &&
+                    (bridgeStatus?.lastRun as any)?.platform !== "ios"));
+
+              if (isWooberly && bridgeStatus?.lastRun && matchesLastPlatform) {
+                effectiveStatus = isBridgeRunning ? "running" : bridgeStatus.lastRun.status;
+                effectiveTime = new Date(bridgeStatus.lastRun.startedAt).toLocaleString();
+              }
+
+              return (
+                <TableRow key={p.id}>
+                  <TableCell className="font-semibold">{p.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{p.version || "—"}</TableCell>
+                  <TableCell>{p.environment || "—"}</TableCell>
+                  <TableCell>{p.owner || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {effectiveTime}
+                  </TableCell>
+                  <TableCell>
+                    {effectiveStatus !== "never run" ? (
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={effectiveStatus} />
+                        {isBridgeRunning && (
+                          <span className="font-mono text-xs text-muted-foreground">
+                            ({bridgeStatus?.currentRun?.elapsedSeconds ?? 0}s)
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end items-center gap-2">
+                      {/* View Results Link/Button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1.5"
+                        onClick={() => setSelectedProduct(p)}
+                      >
+                        <Video className="h-3.5 w-3.5 text-primary" />
+                        View Results
+                      </Button>
+
+                      {/* Start / Stop Toggle */}
+                      {isRunning ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="gap-1.5"
+                          onClick={() => handleStop(p)}
+                        >
+                          <Square className="h-3.5 w-3.5" /> Stop
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => handleStart(p)}
+                        >
+                          <Play className="h-3.5 w-3.5" /> Start
+                        </Button>
+                      )}
+
+                      {!p.id.startsWith("wooberly-") && p.id !== "wooberly-appium" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Delete product"
+                          onClick={() => confirm(`Delete ${p.name}?`) && remove.mutate(p.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Results & Video Modal */}
+      {selectedProduct && (
+        <ViewResultsDialog
+          product={selectedProduct}
+          open={!!selectedProduct}
+          onOpenChange={(open) => !open && setSelectedProduct(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Modal to View Historical Results & Stream Video
+function ViewResultsDialog({
+  product,
+  open,
+  onOpenChange,
+}: {
+  product: ProductItem;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  const isIOS =
+    product.name.toLowerCase().includes("ios") ||
+    product.environment?.toLowerCase().includes("ios") ||
+    product.environment?.toLowerCase().includes("iphone");
+
+  // Query runs from bridge history
+  const { data: bridgeRuns, isLoading: isRunsLoading, refetch } = useQuery<{ runs: BridgeRunRecord[] }>({
+    queryKey: ["bridgeRuns", product.name],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${BRIDGE_URL}/api/runs`);
+        if (!res.ok) return { runs: [] };
+        return await res.json();
+      } catch {
+        return { runs: [] };
+      }
+    },
+    enabled: open,
+  });
+
+  const allRuns = bridgeRuns?.runs || [];
+  // Filter runs matching this product/platform
+  const runs = allRuns.filter((r) => {
+    if (r.productName === product.name) return true;
+    const rIsIOS = r.productName.toLowerCase().includes("ios") || (r as any).platform === "ios";
+    return isIOS ? rIsIOS : !rIsIOS;
+  });
+
+  const activeRun = (selectedRunId ? runs.find((r) => r.id === selectedRunId) : null) || runs[0] || null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between pr-4">
+            <div>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Video className="h-5 w-5 text-primary" />
+                {product.name} — Smoke Test Results
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Version {product.version || "latest"} • {product.environment || (isIOS ? "iPhone 15 Real Device" : "Android Device")}
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => refetch()} title="Refresh results">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6 pt-2">
+          {/* Active Run Outcome Box */}
+          {activeRun ? (
+            <div className="space-y-3">
+              {/* Case 1: Active Run Passed -> Show Video */}
+              {activeRun.status === "passed" && (
+                <div className="rounded-lg border border-success/30 bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 text-success font-semibold text-sm">
+                        <CheckCircle2 className="h-4 w-4" /> Test Passed Successfully
+                      </span>
+                      {activeRun.videoFilename && (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          ({activeRun.videoFilename})
+                        </span>
+                      )}
+                    </div>
+                    {activeRun.videoUrl && (
+                      <a
+                        href={activeRun.videoUrl}
+                        download={activeRun.videoFilename || "test_recording.mp4"}
+                        className="flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download MP4
+                      </a>
+                    )}
+                  </div>
+
+                  {activeRun.videoUrl ? (
+                    <div className="overflow-hidden rounded-md border bg-black shadow">
+                      <video
+                        src={activeRun.videoUrl}
+                        controls
+                        playsInline
+                        className="w-full aspect-video"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-6 rounded-md border border-dashed text-center text-muted-foreground space-y-1">
+                      <p className="text-sm font-medium">Test passed, but no video file was attached to this run.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Case 2: Active Run Failed / Stopped -> Show Error Reason & Details (NO OLD VIDEO) */}
+              {(activeRun.status === "failed" || activeRun.status === "stopped") && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                      <XCircle className="h-5 w-5" />
+                      Script Execution {activeRun.status === "stopped" ? "Stopped by User" : "Failed"}
+                    </div>
+                    {activeRun.exitCode !== null && (
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-destructive/20 text-destructive font-bold">
+                        Exit Code: {activeRun.exitCode}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                      Reason for Failure:
+                    </p>
+                    <pre className="p-3 bg-card border border-destructive/30 rounded font-mono text-xs text-destructive overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-40">
+                      {activeRun.errorReason || "Script execution failed with an unknown error. Inspect logs below."}
+                    </pre>
+                  </div>
+
+                  {/* Collapsible raw logs */}
+                  {activeRun.logs && activeRun.logs.length > 0 && (
+                    <details className="text-xs pt-1">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-mono flex items-center gap-1">
+                        <Terminal className="h-3.5 w-3.5" /> View Console Logs ({activeRun.logs.length} lines)
+                      </summary>
+                      <pre className="mt-2 p-3 bg-black/90 text-zinc-300 rounded font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60 leading-normal">
+                        {activeRun.logs.join("\n")}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
+
+              {/* Case 3: Active Run Running */}
+              {activeRun.status === "running" && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-5 text-center space-y-2">
+                  <span className="pulse-dot inline-block h-3 w-3 rounded-full bg-warning mr-2" />
+                  <span className="font-semibold text-warning text-sm">
+                    Test is actively executing on {isIOS ? "iPhone 15" : "Android"} device...
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Elapsed time: {activeRun.durationSeconds}s. The results and video recording will appear automatically once completed.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 rounded-md border border-dashed text-center text-muted-foreground space-y-2">
+              <Video className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm font-medium">No recorded runs available yet.</p>
+              <p className="text-xs">
+                Click the <strong>Start</strong> button to run the automation test on your phone.
+              </p>
+            </div>
+          )}
+
+          {/* Execution History Table */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-primary" />
+              Execution History (Click any row to inspect)
+            </h3>
+
+            <div className="rounded-md border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead className="text-right">Outcome</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isRunsLoading && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-xs text-muted-foreground">
+                        Loading test history…
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!isRunsLoading && !runs.length && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-xs text-muted-foreground">
+                        No previous runs found. Click <strong>Start</strong> to trigger your first run.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {runs.map((r) => {
+                    const isSelected = activeRun?.id === r.id;
+                    const dateStr = new Date(r.startedAt).toLocaleString();
+                    const durationStr = r.durationSeconds ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : `${r.durationSeconds}s`;
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className={`cursor-pointer transition-colors ${isSelected ? "bg-muted font-medium" : "hover:bg-muted/50"}`}
+                        onClick={() => setSelectedRunId(r.id)}
+                      >
+                        <TableCell className="font-mono text-xs">{dateStr}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={r.status} />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{durationStr}</TableCell>
+                        <TableCell className="text-right">
+                          {r.status === "passed" && r.videoUrl ? (
+                            <span className="inline-flex items-center gap-1 font-mono text-xs text-primary">
+                              <Video className="h-3 w-3" /> Video Available
+                            </span>
+                          ) : r.status === "failed" ? (
+                            <span className="inline-flex items-center gap-1 font-mono text-xs text-destructive">
+                              <XCircle className="h-3 w-3" /> Error Details
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddProductDialog({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", version: "", environment: "", owner: "" });
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from("products").insert({
+      name: form.name.trim(),
+      version: form.version || null,
+      environment: form.environment || null,
+      owner: form.owner || null,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Product added");
+    setForm({ name: "", version: "", environment: "", owner: "" });
+    setOpen(false);
+    onAdded();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button><Plus className="h-4 w-4 mr-1" /> Add product</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add product</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          {(["name", "version", "environment", "owner"] as const).map((k) => (
+            <div key={k} className="space-y-2">
+              <Label htmlFor={k} className="capitalize">{k}{k === "name" && " *"}</Label>
+              <Input
+                id={k}
+                required={k === "name"}
+                placeholder={{ name: "Wooberly", version: "v3.5", environment: "Android Device", owner: "QA Team" }[k]}
+                value={form[k]}
+                onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+              />
+            </div>
+          ))}
+          <DialogFooter>
+            <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save product"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

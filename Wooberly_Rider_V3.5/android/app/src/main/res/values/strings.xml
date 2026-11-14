@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="GRAPHQL_DOMAIN">GRAPHQL_DOMAIN</string>
+<string name="UPLOAD_URL">UPLOAD_URL</string>
+<string name="APP_VERSION">1.0</string>
+<string name="BUILD_VERSION">1</string>
+<string name="APP_NAME">APP_NAME</string>
+<string name="SOCKET_URL">SOCKET_URL</string>
+</resources>

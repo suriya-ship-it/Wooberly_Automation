@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <g id="Group_43151" data-name="Group 43151" transform="translate(-42.201 -309.201)">
+    <g id="Ellipse_4" data-name="Ellipse 4" transform="translate(42.201 309.201)" fill="none" stroke="#f2f2f2" stroke-width="1.3">
+      <circle cx="20" cy="20" r="20" stroke="none"/>
+      <circle cx="20" cy="20" r="19.35" fill="none"/>
+    </g>
+    <g id="Group_43127" data-name="Group 43127" transform="translate(32.8 -421.198)">
+      <g id="Group_38677" data-name="Group 38677" transform="translate(19.938 744.665)">
+        <g id="Group_42696" data-name="Group 42696" transform="translate(0 0)">
+          <g id="car_1_" data-name="car (1)" transform="translate(0)">
+            <g id="Group_43091" data-name="Group 43091">
+              <path id="Path_24735" data-name="Path 24735" d="M1.041,119.7l1.607-.734,1.418-3.215A2.234,2.234,0,0,1,5.971,114.7h6.041a2.254,2.254,0,0,1,1.791.881l1.832,3.35,3.053.836A1.79,1.79,0,0,1,20,121.5v1.168a1.789,1.789,0,0,1-1.775,1.8h-.262a2.276,2.276,0,0,1-4.406,0H6.672a2.276,2.276,0,0,1-4.406,0H1.775A1.789,1.789,0,0,1,0,122.664v-1.332A1.786,1.786,0,0,1,1.041,119.7Zm14.721,5.643a1.455,1.455,0,1,0-1.455-1.455A1.455,1.455,0,0,0,15.762,125.344Zm-11.291,0a1.455,1.455,0,1,0-1.455-1.455A1.455,1.455,0,0,0,4.471,125.344Zm-2.7-1.7h.434a2.276,2.276,0,0,1,4.525,0H13.5a2.276,2.276,0,0,1,4.525,0h.2a.967.967,0,0,0,.955-.984V121.5a.965.965,0,0,0-.709-.939l-3.193-.873a.4.4,0,0,1-.217-.148l-1.91-3.456a1.449,1.449,0,0,0-1.143-.557H5.971a1.412,1.412,0,0,0-1.213.664l-1.484,3.321a.4.4,0,0,1-.176.156l-1.713.783a.965.965,0,0,0-.561.885v1.332h0A.967.967,0,0,0,1.775,123.647Z" transform="translate(0 -114.703)" stroke="#000" stroke-width="0.8"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <circle id="Ellipse_75" data-name="Ellipse 75" cx="1.245" cy="1.245" r="1.245" transform="translate(35.498 745.557) rotate(-21)" fill="#00b500"/>
+    </g>
+  </g>
+</svg>

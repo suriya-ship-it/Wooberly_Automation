@@ -1,0 +1,21 @@
+{
+  "name": "rentall-automation-workspace",
+  "version": "1.0.0",
+  "description": "RentALL Automation Master Workspace",
+  "scripts": {
+    "test:mobile": "cd \"RentALL Mobile Automation\" && npm run test:mobile",
+    "test:mobile:phase1": "cd \"RentALL Mobile Automation\" && npm run test:phase1",
+    "test:listing": "cd \"RentALL Mobile Automation\" && npm run test:listing",
+    "test:mobile:listing": "cd \"RentALL Mobile Automation\" && npm run test:mobile:listing",
+    "test:mobile:full": "cd \"RentALL Mobile Automation\" && npm run test:mobile:full",
+    "test:web": "cd \"RentALL Automation\" && npm run test:web"
+  },
+  "keywords": [
+    "rentall",
+    "automation",
+    "mobile",
+    "web"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}

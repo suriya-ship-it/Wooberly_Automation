@@ -1,0 +1,423 @@
+import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import { spawn, ChildProcess } from "node:child_process";
+import { EmailService } from "../services/EmailService";
+
+const PORT = 4000;
+const REPO_ROOT = path.resolve(__dirname, "..");
+const TEST_REF_DIR = path.join(REPO_ROOT, "Test reference");
+const RUNS_FILE = path.join(__dirname, "runs_history.json");
+
+if (!fs.existsSync(TEST_REF_DIR)) {
+  fs.mkdirSync(TEST_REF_DIR, { recursive: true });
+}
+
+interface TestRunRecord {
+  id: string;
+  productName: string;
+  platform?: "ios" | "android" | "web";
+  status: "running" | "passed" | "failed" | "stopped";
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number;
+  exitCode: number | null;
+  videoFilename: string | null;
+  videoUrl: string | null;
+  errorReason: string | null;
+  logs: string[];
+}
+
+let activeProcess: ChildProcess | null = null;
+let currentRun: TestRunRecord | null = null;
+let currentLogs: string[] = [];
+
+// Load existing run history
+function loadHistory(): TestRunRecord[] {
+  try {
+    if (fs.existsSync(RUNS_FILE)) {
+      const data = fs.readFileSync(RUNS_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error("[Bridge] Failed to load runs history:", err);
+  }
+  return [];
+}
+
+function saveRunRecord(record: TestRunRecord) {
+  try {
+    const list = loadHistory();
+    const index = list.findIndex((r) => r.id === record.id);
+    if (index >= 0) {
+      list[index] = record;
+    } else {
+      list.unshift(record);
+    }
+    // keep last 50 runs
+    const trimmed = list.slice(0, 50);
+    fs.writeFileSync(RUNS_FILE, JSON.stringify(trimmed, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[Bridge] Failed to save run record:", err);
+  }
+}
+
+function setCors(res: http.ServerResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length");
+}
+
+function sendJson(res: http.ServerResponse, status: number, body: unknown) {
+  setCors(res);
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function getLatestVideo(preferFilename?: string): string | null {
+  try {
+    if (!fs.existsSync(TEST_REF_DIR)) return null;
+    const files = fs.readdirSync(TEST_REF_DIR).filter((f) => f.endsWith(".mp4"));
+    if (!files.length) return null;
+    // Prefer requested file if present
+    if (preferFilename && files.includes(preferFilename)) {
+      return preferFilename;
+    }
+    // Prefer latest_execution.mp4 if exists
+    if (files.includes("latest_execution.mp4")) {
+      return "latest_execution.mp4";
+    }
+    // Otherwise sort by mtime desc
+    files.sort((a, b) => {
+      const aTime = fs.statSync(path.join(TEST_REF_DIR, a)).mtimeMs;
+      const bTime = fs.statSync(path.join(TEST_REF_DIR, b)).mtimeMs;
+      return bTime - aTime;
+    });
+    return files[0];
+  } catch {
+    return null;
+  }
+}
+
+// Stream video with HTTP 206 Partial Content for HTML5 player
+function streamVideo(req: http.IncomingMessage, res: http.ServerResponse, filename: string) {
+  setCors(res);
+  const filePath = path.join(TEST_REF_DIR, filename);
+
+  // Prevent path traversal
+  if (!filePath.startsWith(TEST_REF_DIR) || !fs.existsSync(filePath)) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Video not found");
+    return;
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = end - start + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+
+    res.writeHead(206, {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunksize,
+      "Content-Type": "video/mp4",
+    });
+    file.pipe(res);
+  } else {
+    res.writeHead(200, {
+      "Content-Length": fileSize,
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+    });
+    fs.createReadStream(filePath).pipe(res);
+  }
+}
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const pathname = url.pathname;
+
+  if (req.method === "OPTIONS") {
+    setCors(res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Health
+  if (req.method === "GET" && pathname === "/api/health") {
+    sendJson(res, 200, { status: "ok", port: PORT, appiumDir: REPO_ROOT });
+    return;
+  }
+
+  // Get current status
+  if (req.method === "GET" && pathname === "/api/tests/status") {
+    const isRunning = activeProcess !== null;
+    const elapsedSeconds = currentRun && isRunning
+      ? Math.round((Date.now() - new Date(currentRun.startedAt).getTime()) / 1000)
+      : (currentRun?.durationSeconds || 0);
+
+    const history = loadHistory();
+    const lastRun = currentRun || history[0] || null;
+
+    sendJson(res, 200, {
+      isRunning,
+      currentRun: isRunning ? { ...currentRun, elapsedSeconds } : null,
+      lastRun,
+      logsTail: currentLogs.slice(-40),
+    });
+    return;
+  }
+
+  // Start test
+  if (req.method === "POST" && pathname === "/api/tests/start") {
+    let bodyStr = "";
+    req.on("data", (chunk) => {
+      bodyStr += chunk.toString();
+    });
+
+    req.on("end", () => {
+      if (activeProcess !== null) {
+        sendJson(res, 409, { error: "A test is already currently running." });
+        return;
+      }
+
+      let payload: { platform?: "ios" | "android" | "web"; productName?: string } = {};
+      try {
+        if (bodyStr.trim()) {
+          payload = JSON.parse(bodyStr);
+        }
+      } catch (err) {
+        console.warn("[Bridge] Could not parse JSON body in /api/tests/start:", err);
+      }
+
+      const isWeb =
+        payload.platform === "web" ||
+        (payload.productName && payload.productName.toLowerCase().includes("web"));
+      const isRentALLMobile =
+        !isWeb &&
+        payload.productName &&
+        payload.productName.toLowerCase().includes("rentall");
+      const isIOS =
+        !isWeb &&
+        !isRentALLMobile &&
+        (payload.platform === "ios" ||
+          (payload.productName && payload.productName.toLowerCase().includes("ios")));
+      const platform: "ios" | "android" | "web" = isWeb ? "web" : isIOS ? "ios" : "android";
+      const productName = payload.productName || (isWeb ? "RentALL Web" : isRentALLMobile ? "RentALL Mobile" : isIOS ? "Wooberly (iOS)" : "Wooberly (Android)");
+      const npmScript = isWeb ? "test:web" : isRentALLMobile ? "test:mobile" : isIOS ? "test:ios:step2" : "test:step2";
+      const preferredVideo = isRentALLMobile ? "rentall_mobile_full_e2e_latest.mp4" : isIOS ? "latest_ios_execution.mp4" : "latest_execution.mp4";
+      const targetCwd = isWeb
+        ? "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Automation"
+        : isRentALLMobile
+        ? "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Mobile Automation"
+        : REPO_ROOT;
+
+      const runId = "run_" + Date.now();
+      const startedAt = new Date().toISOString();
+      currentLogs = [];
+
+      currentRun = {
+        id: runId,
+        productName,
+        platform,
+        status: "running",
+        startedAt,
+        endedAt: null,
+        durationSeconds: 0,
+        exitCode: null,
+        videoFilename: null,
+        videoUrl: null,
+        errorReason: null,
+        logs: currentLogs,
+      };
+      saveRunRecord(currentRun);
+
+      console.log(`\n========================================`);
+      console.log(`[Bridge] Starting ${npmScript} for ${productName}...`);
+      console.log(`[Bridge] Platform: ${platform.toUpperCase()} | Run ID: ${runId} | Time: ${startedAt}`);
+      console.log(`========================================\n`);
+
+      const child = spawn("npm", ["run", npmScript], {
+        cwd: targetCwd,
+        shell: true,
+        env: { ...process.env, FORCE_COLOR: "1" },
+      });
+
+      activeProcess = child;
+
+      const appendLog = (chunk: Buffer) => {
+        const text = chunk.toString();
+        process.stdout.write(text);
+        const lines = text.split("\n");
+        for (const line of lines) {
+          if (line.trim()) {
+            currentLogs.push(line);
+            if (currentLogs.length > 2000) currentLogs.shift();
+          }
+        }
+      };
+
+      child.stdout.on("data", appendLog);
+      child.stderr.on("data", appendLog);
+
+      child.on("close", (code) => {
+        const endedAt = new Date().toISOString();
+        const durationSeconds = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
+        const isSuccess = code === 0;
+        const status = isSuccess ? "passed" : "failed";
+
+        let videoFilename: string | null = null;
+        let videoUrl: string | null = null;
+        let errorReason: string | null = null;
+
+        if (isSuccess) {
+          videoFilename = getLatestVideo(preferredVideo);
+          videoUrl = videoFilename ? `http://localhost:${PORT}/api/video/${videoFilename}` : null;
+          console.log(`\n[Bridge] Test PASSED in ${durationSeconds}s! Video recorded: ${videoFilename}`);
+          // Send pass report email with video attachment
+          try {
+            EmailService.sendTestPassedReport(videoFilename || undefined);
+          } catch (e) {
+            console.warn('[Bridge] Email dispatch error:', e);
+          }
+        } else {
+          // Extract meaningful error lines
+          const errorLines = currentLogs.filter(
+            (l) =>
+              l.toLowerCase().includes("error") ||
+              l.toLowerCase().includes("fail") ||
+              l.includes("Error:") ||
+              l.includes("Exception") ||
+              l.includes("ECONNREFUSED") ||
+              l.includes("Device")
+          );
+          errorReason = errorLines.slice(-6).join("\n") || currentLogs.slice(-6).join("\n") || `Script exited with exit code ${code}`;
+          console.log(`\n[Bridge] Test FAILED with exit code ${code}. Error: ${errorReason}`);
+        }
+
+        if (currentRun && currentRun.id === runId) {
+          currentRun = {
+            ...currentRun,
+            status,
+            endedAt,
+            durationSeconds,
+            exitCode: code,
+            videoFilename,
+            videoUrl,
+            errorReason,
+            logs: currentLogs.slice(-200),
+          };
+          saveRunRecord(currentRun);
+        }
+
+        activeProcess = null;
+      });
+
+      sendJson(res, 200, {
+        message: `Test started successfully on ${platform.toUpperCase()}`,
+        platform,
+        productName,
+        runId,
+        startedAt,
+      });
+    });
+    return;
+  }
+
+  // Stop test
+  if (req.method === "POST" && pathname === "/api/tests/stop") {
+    if (!activeProcess) {
+      sendJson(res, 400, { error: "No test is currently running." });
+      return;
+    }
+
+    console.log("[Bridge] Stop signal received. Terminating test process...");
+    activeProcess.kill("SIGTERM");
+    setTimeout(() => {
+      if (activeProcess) {
+        activeProcess.kill("SIGKILL");
+      }
+    }, 2000);
+
+    if (currentRun) {
+      currentRun = {
+        ...currentRun,
+        status: "stopped",
+        endedAt: new Date().toISOString(),
+        durationSeconds: Math.round((Date.now() - new Date(currentRun.startedAt).getTime()) / 1000),
+        exitCode: -1,
+        videoFilename: null,
+        videoUrl: null,
+        errorReason: "Execution stopped manually by user.",
+      };
+      saveRunRecord(currentRun);
+    }
+    activeProcess = null;
+
+    sendJson(res, 200, { message: "Test stopped successfully." });
+    return;
+  }
+
+  // List historical runs
+  if (req.method === "GET" && pathname === "/api/runs") {
+    const history = loadHistory();
+    // If active process, prepend currentRun
+    const all = currentRun && activeProcess ? [currentRun, ...history.filter((h) => h.id !== currentRun!.id)] : history;
+    sendJson(res, 200, { runs: all });
+    return;
+  }
+
+  // List available videos
+  if (req.method === "GET" && pathname === "/api/videos") {
+    try {
+      const files = fs.readdirSync(TEST_REF_DIR).filter((f) => f.endsWith(".mp4"));
+      const videos = files.map((name) => {
+        const stat = fs.statSync(path.join(TEST_REF_DIR, name));
+        return {
+          filename: name,
+          sizeBytes: stat.size,
+          sizeMB: (stat.size / (1024 * 1024)).toFixed(2) + " MB",
+          modifiedAt: stat.mtime.toISOString(),
+          url: `http://localhost:${PORT}/api/video/${encodeURIComponent(name)}`,
+        };
+      });
+      // Sort newest first
+      videos.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+      sendJson(res, 200, { videos });
+    } catch (err) {
+      sendJson(res, 500, { error: "Failed to list videos", details: String(err) });
+    }
+    return;
+  }
+
+  // Stream video
+  if (
+    (req.method === "GET" || req.method === "HEAD") &&
+    (pathname.startsWith("/api/video/") || pathname.startsWith("/videos/") || pathname.startsWith("/video/"))
+  ) {
+    const filename = decodeURIComponent(
+      pathname.replace(/^\/(api\/video|videos|video)\//, "")
+    );
+    streamVideo(req, res, filename);
+    return;
+  }
+
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "Not found" }));
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n======================================================`);
+  console.log(`  Wooberly Automation Bridge Server running on:`);
+  console.log(`  http://localhost:${PORT}`);
+  console.log(`  Video Stream: http://localhost:${PORT}/api/video/latest_execution.mp4`);
+  console.log(`======================================================\n`);
+});

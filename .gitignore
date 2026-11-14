@@ -1,0 +1,22 @@
+# Node
+node_modules/
+# Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+# OS files
+.DS_Store
+# Build
+dist/
+# Env files
+.env
+# Debug artifacts
+debug_artifacts/
+debug_screenshots/
+# Coverage
+coverage/
+# IDE
+.idea/
+.vscode/
+# Misc
+*.log

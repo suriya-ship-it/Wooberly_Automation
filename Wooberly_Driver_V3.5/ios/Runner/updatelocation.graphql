@@ -1,0 +1,45 @@
+
+query sendDriverLocation(
+    $lat: Float!
+    $lng: Float!
+    $riderId: String
+    $deviceId: String
+    $rotation: Float
+    $bookingId: Int
+) {
+    sendDriverLocation(
+        lat: $lat
+        lng: $lng
+        riderId: $riderId
+        deviceId: $deviceId
+        rotation: $rotation
+        bookingId: $bookingId
+    ) {
+        status
+        errorMessage
+        isTripCreated
+    }
+}
+
+query declineBooking($requestStatus: String!, $data: String) {
+declineBooking(requestStatus: $requestStatus, data: $data) {
+status
+errorMessage
+isTryAgain
+}
+}
+
+query getTripStatus{
+  GetTripStatus{
+    result {
+      id
+      riderId
+      tripStatus
+        updatedAt
+
+  }
+    status
+    errorMessage
+  }
+}
+

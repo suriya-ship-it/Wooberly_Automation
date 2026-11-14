@@ -1,0 +1,21 @@
+query SendDriverLocation(
+    $lat: Float!
+    $lng: Float!
+    $riderId: String
+    $deviceId: String
+    $rotation: Float
+    $bookingId: Int
+) {
+    sendDriverLocation(
+        lat: $lat
+        lng: $lng
+        riderId: $riderId
+        deviceId: $deviceId
+        rotation: $rotation
+        bookingId: $bookingId
+    ) {
+        status
+        errorMessage
+        isTripCreated
+    }
+}

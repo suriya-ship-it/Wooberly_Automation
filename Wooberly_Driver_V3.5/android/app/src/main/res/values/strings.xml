@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+<string name="APP_NAME">Wooberly Driver</string>
+
+<string name="GRAPHQL_DOMAIN">https://demo.wooberly.com/api/graphql</string>
+
+<string name="UPLOAD_URL">https://demo.wooberly.com/api</string>
+
+<string name="APP_VERSION">3.5</string>
+
+<string name="BUILD_VERSION">1</string>
+
+<string name="SOCKET_URL">https://demo.wooberly.com</string>
+
+<string name="PLATFORM_NAME">Wooberly</string>
+</resources>
