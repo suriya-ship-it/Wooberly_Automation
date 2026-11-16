@@ -395,7 +395,9 @@ const server = http.createServer((req, res) => {
         : isRentALLSpace
         ? "/Users/radicalstart/Documents/RentALL Space Automation"
         : isRentALLMobile
-        ? "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Mobile Automation"
+        ? (fs.existsSync("/Users/radicalstart/Documents/RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation")
+            ? "/Users/radicalstart/Documents/RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation"
+            : "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Mobile Automation")
         : REPO_ROOT;
 
       // Clean up any lingering worker processes before spawning a fresh run
