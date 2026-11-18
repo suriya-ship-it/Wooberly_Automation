@@ -388,16 +388,42 @@ const server = http.createServer((req, res) => {
         ? "latest_ios"
         : "latest_execution";
 
+      // Dynamic Workspace Discovery:
+      // Supports sibling directories relative to REPO_ROOT, custom env override, or standard user directories
+      const WORKSPACE_DIR = process.env.AUTOMATION_WORKSPACE_DIR || path.resolve(REPO_ROOT, "..");
+      const resolveCandidate = (...candidates: string[]): string => {
+        for (const candidate of candidates) {
+          if (fs.existsSync(candidate)) return candidate;
+        }
+        return candidates[candidates.length - 1];
+      };
+
       const targetCwd = isWeb
-        ? "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Automation"
+        ? resolveCandidate(
+            path.join(WORKSPACE_DIR, "RentALL Automation"),
+            path.join(WORKSPACE_DIR, "PackageDemo/RentALL_V3.9.2/RentALL Automation"),
+            "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Automation"
+          )
         : isRentALLCars
-        ? "/Users/radicalstart/Documents/RentALL Cars Automation"
+        ? resolveCandidate(
+            path.join(WORKSPACE_DIR, "RentALL Cars Automation"),
+            path.join(WORKSPACE_DIR, "rentall-cars-mobile-automation"),
+            "/Users/radicalstart/Documents/RentALL Cars Automation"
+          )
         : isRentALLSpace
-        ? "/Users/radicalstart/Documents/RentALL Space Automation"
+        ? resolveCandidate(
+            path.join(WORKSPACE_DIR, "RentALL Space Automation"),
+            path.join(WORKSPACE_DIR, "rentall-space-mobile-automation"),
+            "/Users/radicalstart/Documents/RentALL Space Automation"
+          )
         : isRentALLMobile
-        ? (fs.existsSync("/Users/radicalstart/Documents/RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation")
-            ? "/Users/radicalstart/Documents/RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation"
-            : "/Users/radicalstart/Documents/PackageDemo/RentALL_V3.9.2/RentALL Mobile Automation")
+        ? resolveCandidate(
+            path.join(WORKSPACE_DIR, "RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation"),
+            path.join(WORKSPACE_DIR, "RentALL Mobile Automation"),
+            path.join(WORKSPACE_DIR, "rentall-mobile-automation"),
+            path.join(WORKSPACE_DIR, "PackageDemo/RentALL_V3.9.2/RentALL Mobile Automation"),
+            "/Users/radicalstart/Documents/RentALL Automation/RentALL_V3.9.2/RentALL Mobile Automation"
+          )
         : REPO_ROOT;
 
       // Clean up any lingering worker processes before spawning a fresh run

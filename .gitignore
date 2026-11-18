@@ -18,5 +18,10 @@ coverage/
 # IDE
 .idea/
 .vscode/
+# Test recordings & media
+*.mp4
+*.webm
+Test reference/*.mp4
+reports/
 # Misc
 *.log
